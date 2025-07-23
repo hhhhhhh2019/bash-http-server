@@ -1,0 +1,214 @@
+#!/usr/bin/env bash
+
+ADDR="0.0.0.0"
+PORT="8080"
+
+
+fatal() {
+	echo "[fatal]" "$@" >&2
+	exit 1
+}
+
+
+enable accept || fatal "failed to enable accept"
+
+
+urldecode() {
+	: "${1//+/ }"
+	printf '%b\n' "${_//%/\\x}"
+}
+
+urlencode() {
+	local LC_ALL=C
+	for (( i = 0; i < ${#1}; i++ )); do
+		: "${1:i:1}"
+		case "$_" in
+			[a-zA-Z0-9.~_-])
+				printf '%s' "$_"
+			;;
+
+			*)
+				printf '%%%02X' "'$_"
+			;;
+		esac
+	done
+	printf '\n'
+}
+
+htmlecode() {
+	local s=$1
+
+	s=${s//&/\&amp;}
+	s=${s//</\&lt;}
+	s=${s//>/\&gt;}
+	s=${s//\'/\&apos;}
+	s=${s//\"/\&quot;}
+
+	echo "$s"
+}
+
+normalize_path() {
+	local parts
+	IFS="/" read -r -a parts <<< "/$1"
+
+	local part
+	local -a out=()
+	for part in "${parts[@]}"; do
+		case "$part" in
+			"")
+				;;
+			".")
+				;;
+			"..")
+				unset "out[-1]" 2>/dev/null
+				;;
+			*)
+				out+=("$part")
+				;;
+		esac
+	done
+
+	echo "/$(IFS="/"; echo "${out[*]}")"
+}
+
+
+read_file() {
+	if [[ -f "$1" ]]; then
+		printf "HTTP/1.1 200 OK\r\n"
+		printf "Content-Type: $2\r\n"
+		printf "\r\n"
+
+		echo "read: $1" >&2
+
+		# cat "$1"
+
+		read -r line
+		echo -e "$line"
+		while read -r line; do
+			echo -e "$line"
+		done <$1
+
+		# exec {file}<"$1"
+		# while read -r -u$file line; do
+		# 	echo "$line"
+		# 	echo "$line" >&2
+		# done
+		# exec {file}<&-
+	else
+		printf "HTTP/1.1 404 Not Found"
+		printf "\r\r"
+	fi
+}
+
+
+get() {
+	local path query
+	IFS="?" read path query <<< "$1"
+	local -n headers=$2
+
+	echo "GET: $1" >&2
+
+	if [[ "$path" == "/" ]]; then
+		read_file "static/index.html" "text/html"
+		return
+	fi
+
+	if [[ "$path" == *.html ]]; then
+		read_file "$PWD/static$path" "text/html"
+		return
+	fi
+
+	if [[ "$path" == *.css ]]; then
+		read_file "$PWD/static/style$path" "text/css"
+		return
+	fi
+
+	if [[ "$path" == *.js ]]; then
+		read_file "$PWD/static/scipt$path" "text/javascript"
+		return
+	fi
+
+	if [[ "$path" == *.png ]]; then
+		read_file "$PWD/static/images$path" "image/png"
+		return
+	fi
+
+	if [[ "$path" == *.jpg || "$path" == *.jpeg ]]; then
+		read_file "$PWD/static/images$path" "image/jpeg"
+		return
+	fi
+
+	if [[ "$path" == *.svg ]]; then
+		read_file "$PWD/static/images$path" "image/svg+xml"
+		return
+	fi
+
+	if [[ "$path" == *.ico ]]; then
+		read_file "$PWD/static/images$path" "image/vnd.microsoft.icon"
+		return
+	fi
+
+	printf "HTTP/1.1 502 Bad Gateway\r\n"
+	printf "\r\n"
+	printf "file $path not found"
+}
+
+
+process_request() {
+	local fd addr
+	fd=$1
+	addr=$2
+
+	state="request"
+
+	declare -A REQUEST=()
+	declare -A HEADERS=()
+
+	while read -r -u "$fd" line; do
+		line=${line%$'\r'}
+
+		case "$state" in
+			"request")
+				local method path version
+				read -r method path version <<< "$line"
+
+				path="$(urldecode "$path")"
+				path="$(normalize_path "$path")"
+
+				REQUEST[method]="$method"
+				REQUEST[path]="$path"
+				REQUEST[version]="$version"
+				state="headers"
+				;;
+			"headers")
+				if [[ -z "$line" ]]; then
+					break
+				fi
+				IFS=":" read -r key value <<< "$line"
+				key=${key,,}
+				value=${value# *}
+				HEADERS[$key]="$value"
+				;;
+		esac
+	done
+
+	[[ ${REQUEST[version]} == "HTTP/1.1" ]] || fatal "unsupported HTTP version: ${REQUEST[version]}"
+
+	case ${REQUEST[method]} in
+		"GET")
+			echo "$(get "${REQUEST[path]}" HEADERS)" 1>&"$fd"
+		;;
+		"POST")
+			exit 1
+		;;
+	esac
+}
+
+
+echo "listening on http://$ADDR:$PORT"
+while true; do
+	accept -v fd -r addr -b "$ADDR" "$PORT" || fatal "failed to read socket"
+	process_request "$fd" "$addr" &
+	exec {fd}>&-
+done
+
