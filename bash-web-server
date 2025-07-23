@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 ADDR="0.0.0.0"
 PORT="8080"
@@ -124,7 +124,7 @@ get() {
 	fi
 
 	if [[ "$path" == *.js ]]; then
-		read_file "$PWD/static/scipt$path" "text/javascript"
+		read_file "$PWD/static/script$path" "text/javascript"
 		return
 	fi
 
