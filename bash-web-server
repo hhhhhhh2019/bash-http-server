@@ -63,7 +63,7 @@ normalize_path() {
 			".")
 				;;
 			"..")
-				unset "out[-1]" 2>/dev/null
+				unset "out[-1]"
 				;;
 			*)
 				out+=("$part")
@@ -202,6 +202,7 @@ process_request() {
 }
 
 
+echo "pid: $$"
 echo "listening on http://$ADDR:$PORT"
 while true; do
 	accept -v fd -r addr -b "$ADDR" "$PORT" || fatal "failed to read socket"
