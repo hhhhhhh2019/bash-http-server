@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bash
 
 ADDR="0.0.0.0"
 PORT="8080"
@@ -10,7 +10,7 @@ fatal() {
 }
 
 
-enable accept || fatal "failed to enable accept"
+# enable accept || fatal "failed to enable accept"
 
 # for some reason reading binary files doesn't work without this
 LANG=C
