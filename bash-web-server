@@ -12,6 +12,9 @@ fatal() {
 
 enable accept || fatal "failed to enable accept"
 
+# for some reason reading binary files doesn't work without this
+LANG=C
+
 
 urldecode() {
 	: "${1//+/ }"
@@ -82,18 +85,12 @@ read_file() {
 
 		# cat "$1"
 
-		read -r line
-		echo -e "$line"
-		while read -r line; do
-			echo -e "$line"
-		done <$1
-
-		# exec {file}<"$1"
-		# while read -r -u$file line; do
-		# 	echo "$line"
-		# 	echo "$line" >&2
-		# done
-		# exec {file}<&-
+		local byte x
+		while IFS= read -r -n 1 -d '' byte; do
+			printf "%c" "$byte"
+			# printf -v x "%02X" "'$byte"
+			# printf "%b" "\x$x"
+		done <"$1"
 	else
 		printf "HTTP/1.1 404 Not Found"
 		printf "\r\r"
@@ -196,7 +193,7 @@ process_request() {
 
 	case ${REQUEST[method]} in
 		"GET")
-			echo "$(get "${REQUEST[path]}" HEADERS)" 1>&"$fd"
+			get "${REQUEST[path]}" HEADERS 1>&"$fd"
 		;;
 		"POST")
 			exit 1
