@@ -166,7 +166,7 @@ post() {
 	echo "body: $body" >&2
 
 	if [[ "$path" == "/send_file" ]]; then
-		echo "$body" > "$PWD/static/text/text_file.txt"
+		printf "%s" "$body" > "$PWD/static/text/text_file.txt"
 
 		printf "HTTP/1.1 200 OK\r\n"
 		printf "\r\n"
