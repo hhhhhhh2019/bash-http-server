@@ -78,7 +78,7 @@ normalize_path() {
 read_file() {
 	if [[ -f "$1" ]]; then
 		printf "HTTP/1.1 200 OK\r\n"
-		printf "Content-Type: $2\r\n"
+		printf "Content-Type: %s\r\n" "$2"
 		printf "\r\n"
 
 		echo "read: $1" >&2
@@ -100,7 +100,7 @@ read_file() {
 
 get() {
 	local path query
-	IFS="?" read path query <<< "$1"
+	IFS="?" read -r path query <<< "$1"
 	local -n headers=$2
 
 	echo "GET: $1" >&2
@@ -147,7 +147,7 @@ get() {
 
 	printf "HTTP/1.1 502 Bad Gateway\r\n"
 	printf "\r\n"
-	printf "file $path not found"
+	printf "file %s not found" "$path"
 }
 
 
