@@ -1,3 +1,21 @@
 body {
 	text-align: center;
 }
+
+
+.form {
+	/* background: red; */
+	width: 50%;
+	/* margin: 0 100%; */
+	display: inline-block;
+}
+
+.form textarea {
+	width: 100%;
+}
+
+.form button {
+	display: inline;
+	width: calc(50% - 2vh);
+	margin: 0 0.5vh;
+}

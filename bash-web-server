@@ -110,6 +110,11 @@ get() {
 		return
 	fi
 
+	if [[ "$path" == "/get_file" ]]; then
+		read_file "$PWD/static/text/text_file.txt" "text/plain"
+		return
+	fi
+
 	if [[ "$path" == *.html ]]; then
 		read_file "$PWD/static$path" "text/html"
 		return
@@ -147,7 +152,30 @@ get() {
 
 	printf "HTTP/1.1 502 Bad Gateway\r\n"
 	printf "\r\n"
-	printf "file %s not found" "$path"
+	printf "gateway %s not found" "$path"
+}
+
+
+post() {
+	local path query
+	IFS="?" read -r path query <<< "$1"
+	local headers=$2
+	local body=$3
+
+	echo "POST: $1" >&2
+	echo "body: $body" >&2
+
+	if [[ "$path" == "/send_file" ]]; then
+		echo "$body" > "$PWD/static/text/text_file.txt"
+
+		printf "HTTP/1.1 200 OK\r\n"
+		printf "\r\n"
+		return
+	fi
+
+	printf "HTTP/1.1 502 Bad Gateway\r\n"
+	printf "\r\n"
+	printf "gateway %s not found" "$path"
 }
 
 
@@ -179,7 +207,12 @@ process_request() {
 				;;
 			"headers")
 				if [[ -z "$line" ]]; then
-					break
+					if [[ "${REQUEST[method]}" == "POST" ]]; then
+						state="body"
+						break
+					else
+						break
+					fi
 				fi
 				IFS=":" read -r key value <<< "$line"
 				key=${key,,}
@@ -189,6 +222,11 @@ process_request() {
 		esac
 	done
 
+	if [[ "$state" == "body" ]]; then
+		read -r -N "${HEADERS[content-length]}" -u "$fd" body
+		REQUEST[body]="$body"
+	fi
+
 	[[ ${REQUEST[version]} == "HTTP/1.1" ]] || fatal "unsupported HTTP version: ${REQUEST[version]}"
 
 	case ${REQUEST[method]} in
@@ -196,7 +234,7 @@ process_request() {
 			get "${REQUEST[path]}" HEADERS 1>&"$fd"
 		;;
 		"POST")
-			exit 1
+			post "${REQUEST[path]}" HEADERS "${REQUEST[body]}" 1>&"$fd"
 		;;
 	esac
 }

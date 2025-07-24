@@ -2,11 +2,26 @@
 <html>
 	<head>
 		<link rel="icon" href="favicon.ico">
+		<meta charset="utf-8">
 
 		<link rel="stylesheet" href="index.css">
 	</head>
 
 	<body>
-		<h1>This is pure bash http server</h1>
+		<h1>Http сервер на чистом bash</h1>
+		<p>Пока он умеет только в GET запросы, но в будующем, я возможно добавлю поддержку остальных</p>
+		<a href="https://youtu.be/L967hYylZuc?si=se838LE4N130MZfB">подробнее</a>
+
+		<hr>
+
+		<div class="form">
+			<textarea name="text" id="textarea"></textarea>
+			<div>
+				<button onclick="send_textarea()">отправить</button>
+				<button onclick="update_textarea()">обновить</button>
+			<div>
+		</div>
+
+		<script src="index.js"></script>
 	</body>
 </html>
